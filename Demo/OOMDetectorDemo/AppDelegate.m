@@ -34,7 +34,7 @@ extern malloc_logger_t* __syscall_logger;
 
 static void oom_log_callback(char *info)
 {
-    NSLog(@"%s",info);
+    NSLog(@"oom_log_callback-->>>>%s",info);
 }
 
 @import libOOMDetector;
@@ -144,25 +144,5 @@ NSString *const kChunkMallocNoti = @"kChunkMallocNoti";
     
 }
 
--(void)testmmap
-{
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
-    NSString *LibDirectory = [paths objectAtIndex:0];
-    NSString *path = [LibDirectory stringByAppendingPathComponent:@"test.log"];
-    FILE *fp = fopen ( [path fileSystemRepresentation] , "wb+" ) ;
-    char *ptr = (char *)mmap(0, 50*1024*1024, PROT_WRITE | PROT_READ, (MAP_FILE|MAP_SHARED), fileno(fp), 0);
-    munmap(ptr,50*1024*1024);
-}
-
--(void)performanceData:(NSDictionary *)data completionHandler:(void (^)(BOOL))completionHandler
-{
-    //上报
-}
-
-/** 在出现单次大块内存分配、检查到内存泄漏且时、调用uploadAllStack方法时触发回调 */
--(void)fileData:(id)data extra:(NSDictionary<NSString*,NSString*> *)extra type:(QQStackReportType)type completionHandler:(void (^)(BOOL))completionHandler
-{
-    //上报
-}
 
 @end
