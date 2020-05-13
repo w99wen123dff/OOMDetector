@@ -33,6 +33,7 @@ public:
     void cleanLogger();
     void syncLogger();
     bool isValid();
+    bool closeLogger();
     LogPrinter logPrinterCallBack;
 public:
     char *mmap_ptr;

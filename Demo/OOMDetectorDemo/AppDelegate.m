@@ -121,7 +121,7 @@ NSString *const kChunkMallocNoti = @"kChunkMallocNoti";
     [detector setPerformanceDataDelegate:[MyOOMDataManager getInstance]];
 //
 //    // 单次大块内存分配监控
-    [detector startSingleChunkMallocDetector:50 * 1024 * 1024 callback:^(size_t bytes, NSString *stack) {
+    [detector startSingleChunkMallocDetector:10 * 1024 * 1024 callback:^(size_t bytes, NSString *stack) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kChunkMallocNoti object:stack];
     }];
 

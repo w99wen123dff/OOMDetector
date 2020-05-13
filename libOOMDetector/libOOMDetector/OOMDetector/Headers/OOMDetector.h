@@ -65,7 +65,7 @@ typedef void (^ChunkMallocBlock)(size_t bytes, NSString *stack);
 -(void)registerLogCallback:(logCallback)logger;
 
 /** 在调用startMaxMemoryStatistic:开启内存触顶监控后会触发此回调，返回前一次app运行时单次生命周期内的最大物理内存数据 */
--(void)setPerformanceDataDelegate:(id<QQOOMPerformanceDataDelegate>)delegate;
+- (void)setPerformanceDataDelegate:(id<CouOOMPerformanceDataDelegate>)delegate;
 
 #pragma mark -- 单次大内存分配监控
 

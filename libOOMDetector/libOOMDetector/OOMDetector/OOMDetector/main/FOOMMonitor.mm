@@ -108,6 +108,7 @@ typedef enum{
     BOOL _isDetectorStarted;
     BOOL _isOOMDetectorOpen;
     NSString *_crash_stage;
+    NSString *_customUUID;
 }
 
 @end
@@ -139,11 +140,16 @@ typedef enum{
 -(void)createmmapLogger
 {
     [_logLock lock];
-    [self hookExitAndAbort];
-    [self swizzleMethods];
+    static dispatch_once_t onceToken;
+    __weak typeof(self)weakSelf = self;
+    dispatch_once(&onceToken, ^{
+        __strong typeof(self)strongSelf = weakSelf;
+        [strongSelf hookExitAndAbort];
+        [strongSelf swizzleMethods];
+    });
     NSString *dir = [self foomMemoryDir];
     _systemVersion = [[NSProcessInfo processInfo] operatingSystemVersionString];
-    _currentLogPath = [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.oom",_uuid]];
+    _currentLogPath = [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.oom", [self getLogUUID]]];
     _foomLogger = new HighSpeedLogger(malloc_default_zone(), _currentLogPath, foom_mmap_size);
     _crash_stage = @" ";
     int32_t length = 0;
@@ -167,7 +173,14 @@ typedef enum{
 
 -(NSString *)getLogUUID
 {
+    if (_customUUID.length > 0) {
+        return _customUUID;
+    }
     return _uuid;
+}
+
+- (void)setLogUUID:(NSString *)customUUID {
+    _customUUID = customUUID;
 }
 
 -(NSString *)getLogPath {
@@ -190,6 +203,17 @@ typedef enum{
     _ocurTime = [[NSDate date] timeIntervalSince1970];
     _startTime = _ocurTime;
     [self performSelector:@selector(createmmapLogger) onThread:_thread withObject:nil waitUntilDone:NO];
+}
+
+- (void)stop {
+    [self performSelector:@selector(_stop) onThread:_thread withObject:nil waitUntilDone:YES];
+}
+
+- (void)_stop {
+    [_logLock lock];
+    _foomLogger->closeLogger();
+    [_logLock unlock];
+    _isDetectorStarted = NO;
 }
 
 -(void)hookExitAndAbort
@@ -232,7 +256,24 @@ typedef enum{
 -(void)updateFoomData{
     if(_foomLogger && _foomLogger->isValid()){
         NSString* residentMemory = [NSString stringWithFormat:@"%lu", (unsigned long)_residentMemSize];
-        NSDictionary *foomDict = [NSDictionary dictionaryWithObjectsAndKeys:residentMemory,@"lastMemory",[NSNumber numberWithUnsignedLongLong:_memWarningTimes],@"memWarning",_uuid,@"uuid",_systemVersion,@"systemVersion",_appVersion,@"appVersion",[NSNumber numberWithInt:(int)_appState],@"appState",[NSNumber numberWithBool:_isCrashed],@"isCrashed",[NSNumber numberWithBool:_isDeadLock],@"isDeadLock",_deadLockStack ? _deadLockStack : @"",@"deadlockStack",[NSNumber numberWithBool:_isExit],@"isExit",[NSNumber numberWithDouble:_ocurTime],@"ocurTime",[NSNumber numberWithDouble:_startTime],@"startTime",[NSNumber numberWithBool:_isOOMDetectorOpen],@"isOOMDetectorOpen",_crash_stage,@"crash_stage",nil];
+//        NSDictionary *foomDict = [NSDictionary dictionaryWithObjectsAndKeys:residentMemory,@"lastMemory",[NSNumber numberWithUnsignedLongLong:_memWarningTimes],@"memWarning",_uuid,@"uuid",_systemVersion,@"systemVersion",_appVersion,@"appVersion",[NSNumber numberWithInt:(int)_appState],@"appState",[NSNumber numberWithBool:_isCrashed],@"isCrashed",[NSNumber numberWithBool:_isDeadLock],@"isDeadLock",_deadLockStack ? _deadLockStack : @"",@"deadlockStack",[NSNumber numberWithBool:_isExit],@"isExit",[NSNumber numberWithDouble:_ocurTime],@"ocurTime",[NSNumber numberWithDouble:_startTime],@"startTime",[NSNumber numberWithBool:_isOOMDetectorOpen],@"isOOMDetectorOpen",_crash_stage,@"crash_stage",nil];
+        
+        NSDictionary *foomDict = @{
+                                    @"lastMemory":residentMemory,
+                                    @"memWarning":[NSNumber numberWithUnsignedLongLong:_memWarningTimes],
+                                    @"uuid":_uuid,
+                                    @"systemVersion":_systemVersion,
+                                    @"appVersion":_appVersion,
+                                    @"appState":[NSNumber numberWithInt:(int)_appState],
+                                    @"isCrashed":[NSNumber numberWithBool:_isCrashed],
+                                    @"isDeadLock":[NSNumber numberWithBool:_isDeadLock],
+                                    @"deadlockStack":_deadLockStack ? _deadLockStack : @"",
+                                    @"isExit":[NSNumber numberWithBool:_isExit],
+                                    @"ocurTime":[NSNumber numberWithDouble:_ocurTime],
+                                    @"startTime":[NSNumber numberWithDouble:_startTime],
+                                    @"isOOMDetectorOpen":[NSNumber numberWithBool:_isOOMDetectorOpen],
+                                    @"crash_stage":_crash_stage
+                                };
         NSData *foomData = [NSKeyedArchiver archivedDataWithRootObject:foomDict];
         if(foomData && [foomData length] > 0){
             _foomLogger->cleanLogger();

@@ -102,17 +102,34 @@ double overflow_limit;
 -(void)updateMemory
 {
     static int flag = 0;
-    double maxMemory = [self appMaxMemory];
+    NSDictionary *memInfo = [self appMaxMemory];
+    double resident_size_max = memInfo?[memInfo[@"resident_size_max"] doubleValue]:0;
+    _residentMemSize = memInfo?[memInfo[@"resident_size"] doubleValue]:0;
+    
+    double physFootprintMemory = [self physFootprintMemory];
+    
     if (self.statisticsInfoBlock) {
         self.statisticsInfoBlock(_residentMemSize);
     }
-    double physFootprintMemory = [self physFootprintMemory];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        CouOOMStatusData data = {};
+        data.phys_footprint = physFootprintMemory;
+        data.resident_size = _residentMemSize;
+        data.resident_size_max = resident_size_max;
+        if (self.delegate && [self.delegate respondsToSelector:@selector(memStatusData:completionHandler:)]) {
+            [self.delegate memStatusData:data completionHandler:^(BOOL result) {
+                
+            }];
+        }
+    });
+    
     _indicatorView.memory = _residentMemSize;//physFootprintMemory;
-    NSLog(@"resident:%lfMb footprint:%lfMb",_residentMemSize,physFootprintMemory);
+    NSLog(@"resident:%lfMb footprint:%lfMb",_residentMemSize, physFootprintMemory);
     ++flag;
-    if(maxMemory && flag >= 30){
-        if(maxMemory > _singleLoginMaxMemory){
-            _singleLoginMaxMemory = maxMemory;
+    if(resident_size_max && flag >= 30){
+        if(resident_size_max > _singleLoginMaxMemory){
+            _singleLoginMaxMemory = resident_size_max;
             [self saveLastSingleLoginMaxMemory];
             flag = 0;
         }
@@ -148,6 +165,8 @@ double overflow_limit;
 
 }
 
+
+///  上传上次app运行中的内存信息。
 -(void)uploadLastData
 {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
@@ -162,9 +181,11 @@ double overflow_limit;
             NSString *memory = [minidumpdata objectForKey:@"singleMemory"];
             if(memory){
                 NSDictionary *finalDic = [NSDictionary dictionaryWithObjectsAndKeys:minidumpdata,@"minidumpdata", nil];
-                [[QQLeakDataUploadCenter defaultCenter] performanceData:finalDic completionHandler:^(BOOL) {
-                    
-                }];
+                if (self.delegate && [self.delegate respondsToSelector:@selector(lastTimeAppMemData:completionHandler:)]) {
+                    [self.delegate lastTimeAppMemData:finalDic completionHandler:^(BOOL) {
+                        
+                    }];
+                }
             }
         }
     });
@@ -178,7 +199,7 @@ double overflow_limit;
     return path;
 }
 
-- (double)appMaxMemory
+- (NSDictionary *)appMaxMemory
 {
     mach_task_basic_info_data_t taskInfo;
     unsigned infoCount = sizeof(taskInfo);
@@ -189,10 +210,14 @@ double overflow_limit;
     
     if (kernReturn != KERN_SUCCESS
         ) {
-        return NSNotFound;
+        return nil;
     }
-    _residentMemSize = taskInfo.resident_size / 1024.0 / 1024.0;
-    return taskInfo.resident_size_max / 1024.0 / 1024.0;
+    
+    NSDictionary *info = @{
+        @"resident_size":@(taskInfo.resident_size / 1024.0 / 1024.0),
+        @"resident_size_max":@(taskInfo.resident_size_max / 1024.0 / 1024.0)
+    };
+    return info;
 }
 
 - (double)physFootprintMemory{

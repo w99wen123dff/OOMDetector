@@ -24,7 +24,32 @@
 
 typedef void (^StatisticsInfoBlock)(NSInteger memorySize_M);
 
+struct CouOOMStatusData {
+    double phys_footprint;
+    double resident_size;
+    double resident_size_max;
+};
+typedef struct CouOOMStatusData CouOOMStatusData;
+
+@protocol CouOOMPerformanceDataDelegate <NSObject>
+
+/*! @brief 前一次app运行时单次生命周期内的最大物理内存数据
+*  @param data 性能数据
+*/
+-(void)lastTimeAppMemData:(NSDictionary *)data completionHandler:(void (^)(BOOL))completionHandler;
+
+
+-(void)memStatusData:(CouOOMStatusData)data completionHandler:(void (^)(BOOL))completionHandler;
+
+@end
+
+
+
 @interface OOMStatisticsInfoCenter : NSObject
+
+@property (nonatomic, copy) StatisticsInfoBlock statisticsInfoBlock;
+
+@property (nonatomic, assign) id<CouOOMPerformanceDataDelegate> delegate;
 
 +(OOMStatisticsInfoCenter *)getInstance;
 
@@ -32,9 +57,8 @@ typedef void (^StatisticsInfoBlock)(NSInteger memorySize_M);
 
 -(void)stopMemoryOverFlowMonitor;
 
-@property (nonatomic, copy) StatisticsInfoBlock statisticsInfoBlock;
-
 - (void)showMemoryIndicatorView:(BOOL)yn;
+
 - (void)setupMemoryIndicatorFrame:(CGRect)frame;
 
 -(void)updateMemory;

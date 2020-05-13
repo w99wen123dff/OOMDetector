@@ -30,10 +30,18 @@
  */
 -(void)start;
 
+- (void)stop;
+
 /*! @brief 获取日志uuid，uuid每次启动会唯一生成
  *
  */
 -(NSString *)getLogUUID;
+
+
+/// 设置log的自定义的UUID
+/// @note 必须在start之前调用。
+/// @param customUUID 自定义UUID
+- (void)setLogUUID:(NSString *)customUUID;
 
 /*! @brief 获取当前记录的日志信息目录
  *

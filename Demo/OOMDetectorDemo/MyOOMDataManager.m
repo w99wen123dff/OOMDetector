@@ -57,4 +57,16 @@
 }
 
 
+- (void)lastTimeAppMemData:(NSDictionary *)data completionHandler:(void (^)(BOOL))completionHandler {
+    NSLog(@"performanceData----->>> %@ \n", data);
+    
+    completionHandler(YES);
+}
+
+- (void)memStatusData:(CouOOMStatusData)data completionHandler:(void (^)(BOOL))completionHandler {
+    NSLog(@"performanceData----->>> phys_footprint=%f,resident_size=%f,resident_size_max=%f \n", data.phys_footprint, data.resident_size, data.resident_size_max);
+    
+    completionHandler(YES);
+}
+
 @end

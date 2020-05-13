@@ -116,3 +116,8 @@ bool HighSpeedLogger::isValid()
 {
     return !isFailed;
 }
+
+bool HighSpeedLogger::closeLogger()
+{
+    return munmap(mmap_ptr ,mmap_size) == 0;
+}

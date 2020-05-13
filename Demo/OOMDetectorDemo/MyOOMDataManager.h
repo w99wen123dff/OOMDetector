@@ -20,7 +20,7 @@
 
 @import libOOMDetector;
 
-@interface MyOOMDataManager : NSObject <QQOOMPerformanceDataDelegate, QQOOMFileDataDelegate>
+@interface MyOOMDataManager : NSObject <CouOOMPerformanceDataDelegate, QQOOMFileDataDelegate>
 
 + (instancetype)getInstance;
 

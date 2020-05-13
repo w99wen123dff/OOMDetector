@@ -458,9 +458,9 @@ void myChunkMallocCallback(size_t bytes, NSString *stack)
     [super dealloc];
 }
 
-- (void)setPerformanceDataDelegate:(id<QQOOMPerformanceDataDelegate>)delegate
+- (void)setPerformanceDataDelegate:(id<CouOOMPerformanceDataDelegate>)delegate
 {
-    [[QQLeakDataUploadCenter defaultCenter] setPerformanceDataDelegate:delegate];
+    [OOMStatisticsInfoCenter getInstance].delegate = delegate;
 }
 
 - (void)setFileDataDelegate:(id<QQOOMFileDataDelegate>)delegate
