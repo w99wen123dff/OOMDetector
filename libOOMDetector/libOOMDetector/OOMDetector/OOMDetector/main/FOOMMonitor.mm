@@ -335,8 +335,11 @@ typedef enum{
                             NSDictionary *uploadData = [self parseFoomData:foomDict];
                             NSDictionary *aggregatedData = [NSDictionary dictionaryWithObjectsAndKeys:[NSArray arrayWithObject:uploadData],@"parts",nil];
                             NSString *uuid = [foomDict objectForKey:@"uuid"];
-                            NSDictionary *basicParameter = [NSDictionary dictionaryWithObjectsAndKeys:uin,@"uin",uuid,@"client_identify",[foomDict objectForKey:@"ocurTime"],@"occur_time",nil];
-                            [[QQLeakFileUploadCenter defaultCenter] fileData:aggregatedData extra:basicParameter type:QQStackReportTypeOOMLog completionHandler:nil];
+                            
+                            NSString *time = [NSString stringWithFormat:@"%f", [[foomDict objectForKey:@"ocurTime"] doubleValue]];
+                            NSDictionary *basicParameter = [NSDictionary dictionaryWithObjectsAndKeys:uin,@"uin",uuid,@"client_identify",time,@"occur_time",nil];
+                            NSData *data = [NSJSONSerialization dataWithJSONObject:aggregatedData options:NSJSONWritingPrettyPrinted error:nil];
+                            [[QQLeakFileUploadCenter defaultCenter] fileData:data extra:basicParameter type:QQStackReportTypeOOMLog completionHandler:nil];
                         }
                         [fm removeItemAtPath:fullPath error:nil];
                     }

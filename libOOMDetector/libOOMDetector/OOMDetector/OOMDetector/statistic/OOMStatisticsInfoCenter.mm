@@ -111,14 +111,15 @@ double overflow_limit;
     if (self.statisticsInfoBlock) {
         self.statisticsInfoBlock(_residentMemSize);
     }
-    
+    __weak typeof(self)weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(self)strongSelf = weakSelf;
         CouOOMStatusData data = {};
         data.phys_footprint = physFootprintMemory;
         data.resident_size = _residentMemSize;
         data.resident_size_max = resident_size_max;
-        if (self.delegate && [self.delegate respondsToSelector:@selector(memStatusData:completionHandler:)]) {
-            [self.delegate memStatusData:data completionHandler:^(BOOL result) {
+        if (strongSelf.delegate && [strongSelf.delegate respondsToSelector:@selector(memStatusData:completionHandler:)]) {
+            [strongSelf.delegate memStatusData:data completionHandler:^(BOOL result) {
                 
             }];
         }
@@ -169,7 +170,9 @@ double overflow_limit;
 ///  上传上次app运行中的内存信息。
 -(void)uploadLastData
 {
+    __weak typeof(self)weakSelf = self;
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        __strong typeof(self)strongSelf = weakSelf;
         NSString *filePath = [[self singleLoginMaxMemoryDir] stringByAppendingPathComponent:@"apmLastMaxMemory.plist"];
         NSDictionary *minidumpdata = [NSDictionary dictionaryWithContentsOfFile:filePath];
         _hasUpoad = YES;
@@ -181,8 +184,8 @@ double overflow_limit;
             NSString *memory = [minidumpdata objectForKey:@"singleMemory"];
             if(memory){
                 NSDictionary *finalDic = [NSDictionary dictionaryWithObjectsAndKeys:minidumpdata,@"minidumpdata", nil];
-                if (self.delegate && [self.delegate respondsToSelector:@selector(lastTimeAppMemData:completionHandler:)]) {
-                    [self.delegate lastTimeAppMemData:finalDic completionHandler:^(BOOL) {
+                if (strongSelf.delegate && [strongSelf.delegate respondsToSelector:@selector(lastTimeAppMemData:completionHandler:)]) {
+                    [strongSelf.delegate lastTimeAppMemData:finalDic completionHandler:^(BOOL) {
                         
                     }];
                 }
