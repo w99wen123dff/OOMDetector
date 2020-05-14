@@ -112,7 +112,7 @@ Pod::Spec.new do |s|
 
   # s.resource  = "icon.png"
   # s.resources = "Resources/*.png"
-  s.resources = "assets/*.gif"
+  # s.resources = "assets/*.gif"
 
   # s.preserve_paths = "FilesToSave", "MoreFilesToSave"
 
