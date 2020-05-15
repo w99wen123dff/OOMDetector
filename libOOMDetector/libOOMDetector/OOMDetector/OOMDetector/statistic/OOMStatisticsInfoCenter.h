@@ -24,12 +24,23 @@
 
 typedef void (^StatisticsInfoBlock)(NSInteger memorySize_M);
 
-struct CouOOMStatusData {
-    double phys_footprint;
-    double resident_size;
-    double resident_size_max;
-};
-typedef struct CouOOMStatusData CouOOMStatusData;
+@interface CouMemoryStatusData : NSObject
+@property (nonatomic, assign) double phys_footprint;
+@property (nonatomic, assign) double resident_size;
+@property (nonatomic, assign) double resident_size_max;
+@end
+
+
+@interface CouCPUStatusData : NSObject
+@property (nonatomic, assign) double mainThreadUsage;
+@property (nonatomic, assign) double totalUsage;
+@property (nonatomic, strong) NSDictionary<NSString *, NSNumber *> *usages;
+
++ (NSString *)usageKeyFrom:(NSString *)threadName threadId:(NSUInteger)threadId;
+
+@end
+
+
 
 @protocol CouOOMPerformanceDataDelegate <NSObject>
 
@@ -39,7 +50,10 @@ typedef struct CouOOMStatusData CouOOMStatusData;
 -(void)lastTimeAppMemData:(NSDictionary *)data completionHandler:(void (^)(BOOL))completionHandler;
 
 
--(void)memStatusData:(CouOOMStatusData)data completionHandler:(void (^)(BOOL))completionHandler;
+-(void)memStatusData:(CouMemoryStatusData *)data completionHandler:(void (^)(BOOL))completionHandler;
+
+
+-(void)CPUStatusData:(CouCPUStatusData *)data completionHandler:(void (^)(BOOL))completionHandler;
 
 @end
 
@@ -63,6 +77,7 @@ typedef struct CouOOMStatusData CouOOMStatusData;
 
 -(void)updateMemory;
 
+- (void)updateCPU;
 @end
 
 #endif /* OOMStaticsInfoCenter_h */

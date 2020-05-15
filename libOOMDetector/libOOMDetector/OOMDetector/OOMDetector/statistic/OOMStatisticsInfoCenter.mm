@@ -20,6 +20,7 @@
 #import <mach/task.h>
 #import <mach/mach.h>
 #import <mach/mach_init.h>
+#import <pthread.h>
 #import <UIKit/UIkit.h>
 #import "QQLeakDataUploadCenter.h"
 #import "OOMDetectorLogger.h"
@@ -34,6 +35,22 @@ static OOMStatisticsInfoCenter *center;
 
 double overflow_limit;
 
+
+@implementation CouMemoryStatusData
+
+
+@end
+
+
+@implementation CouCPUStatusData
+
++ (NSString *)usageKeyFrom:(NSString *)threadName threadId:(NSUInteger)threadId {
+    return [NSString stringWithFormat:@"%@-%lu", threadName.length > 0? threadName : @"NoName", (unsigned long)threadId];
+}
+
+@end
+
+
 @interface OOMStatisticsInfoCenter()
 {
     double _singleLoginMaxMemory;
@@ -47,7 +64,18 @@ double overflow_limit;
 
 @end
 
+static mach_port_t main_thread_id;
+
 @implementation OOMStatisticsInfoCenter
+
++ (void)load {
+    main_thread_id = mach_thread_self();
+}
+
+#pragma -mark Implementation of interface
++ (mach_port_t)mainThreadMachID {
+    return main_thread_id;
+}
 
 +(OOMStatisticsInfoCenter *)getInstance
 {
@@ -78,7 +106,7 @@ double overflow_limit;
     overflow_limit = overFlowLimit;
     _thread = [[NSThread alloc] initWithTarget:self selector:@selector(threadMain) object:nil];
     [_thread setName:@"MemoryOverflowMonitor"];
-    _timer = [[NSTimer timerWithTimeInterval:0.5 target:self selector:@selector(updateMemory) userInfo:nil repeats:YES] retain];
+    _timer = [[NSTimer timerWithTimeInterval:0.5 target:self selector:@selector(updateDeviceInfos) userInfo:nil repeats:YES] retain];
     [_thread start];
 }
 
@@ -99,6 +127,12 @@ double overflow_limit;
     }
 }
 
+
+- (void)updateDeviceInfos {
+    [self updateMemory];
+    [self updateCPU];
+}
+
 -(void)updateMemory
 {
     static int flag = 0;
@@ -114,7 +148,7 @@ double overflow_limit;
     __weak typeof(self)weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(self)strongSelf = weakSelf;
-        CouOOMStatusData data = {};
+        CouMemoryStatusData *data = [CouMemoryStatusData new];
         data.phys_footprint = physFootprintMemory;
         data.resident_size = _residentMemSize;
         data.resident_size_max = resident_size_max;
@@ -136,6 +170,69 @@ double overflow_limit;
         }
     }
 }
+
+
+- (void)updateCPU {
+    CouCPUStatusData *data = [self getTotolAndMainThreadUsage];
+    __weak typeof(self)weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(self)strongSelf = weakSelf;
+        if (strongSelf.delegate && [strongSelf.delegate respondsToSelector:@selector(CPUStatusData:completionHandler:)]) {
+            [strongSelf.delegate CPUStatusData:data completionHandler:^(BOOL result) {
+                
+            }];
+        }
+    });
+}
+
+- (CouCPUStatusData *)getTotolAndMainThreadUsage {
+    CouCPUStatusData *data = [CouCPUStatusData new];
+    NSMutableDictionary *usages = [NSMutableDictionary dictionary];
+    double mainThreadUsage = 0;
+    double usageRatio = 0;
+    thread_info_data_t thinfo;
+    thread_act_array_t threads;
+    thread_basic_info_t basic_info_t;
+    mach_msg_type_number_t count = 0;
+    mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
+
+    if (task_threads(mach_task_self(), &threads, &count) == KERN_SUCCESS) {
+        for (int idx = 0; idx < count; idx++) {
+            thread_t threadId = threads[idx];
+            if (thread_info(threadId, THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count) == KERN_SUCCESS) {
+                basic_info_t = (thread_basic_info_t)thinfo;
+                if (!(basic_info_t->flags & TH_FLAGS_IDLE)) {
+                    double currentThreadUsage = basic_info_t->cpu_usage / (double)TH_USAGE_SCALE;
+                    usageRatio += currentThreadUsage;
+                    if (threadId == [[self class] mainThreadMachID]) {
+                        mainThreadUsage = currentThreadUsage;
+                    }
+                    NSString *threadName = [self getThreadNameFromMachThread:threadId] ?: @"";
+                    usages[threadName] = [NSNumber numberWithDouble:currentThreadUsage];
+                }
+            }
+        }
+        assert(vm_deallocate(mach_task_self(), (vm_address_t)threads, count * sizeof(thread_t)) == KERN_SUCCESS);
+    }
+    data.totalUsage = usageRatio;
+    data.mainThreadUsage = mainThreadUsage;
+    data.usages = usages;
+    return data;
+}
+
+
+- (NSString *)getThreadNameFromMachThread:(thread_t)threadId {
+    if (threadId == [[self class] mainThreadMachID]) {
+        return @"main";
+    }
+    
+    pthread_t pt = pthread_from_mach_thread_np(threadId);
+    char name[256];
+    name[0] = '\0';
+    pthread_getname_np(pt, name, sizeof name);
+    return [CouCPUStatusData usageKeyFrom:[[NSString alloc] initWithUTF8String:name] threadId:threadId];
+}
+
 
 //触顶缓存逻辑
 -(void)saveLastSingleLoginMaxMemory{
