@@ -126,7 +126,7 @@ double overflow_limit;
     });
     
     _indicatorView.memory = _residentMemSize;//physFootprintMemory;
-    NSLog(@"resident:%lfMb footprint:%lfMb",_residentMemSize, physFootprintMemory);
+//    NSLog(@"resident:%lfMb footprint:%lfMb",_residentMemSize, physFootprintMemory);
     ++flag;
     if(resident_size_max && flag >= 30){
         if(resident_size_max > _singleLoginMaxMemory){
